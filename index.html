@@ -1,13 +1,417 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>RC 컨트롤러</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#14171c">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="RC 컨트롤러">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #14171c;
+    --panel: #1b1f27;
+    --panel-2: #22272f;
+    --line: #2c323d;
+    --text: #e8eaed;
+    --text-dim: #8b93a1;
+    --amber: #ffb020;
+    --amber-dim: #6b5220;
+    --teal: #35d4c7;
+    --red: #ff4d5e;
+    --red-dim: #4a1e23;
+  }
+  *{ box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+  html, body{ height: 100%; overscroll-behavior: none; }
+  body{
+    margin: 0;
+    background: var(--bg);
+    background-image:
+      radial-gradient(circle at 20% -10%, rgba(255,176,32,0.06), transparent 40%),
+      radial-gradient(circle at 90% 110%, rgba(53,212,199,0.05), transparent 40%);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    display: flex;
+    flex-direction: column;
+    min-height: 100dvh;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+
+  header{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 20px 12px;
+  }
+  .brand{ display: flex; flex-direction: column; gap: 2px; }
+  .eyebrow{
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+  .title{ font-size: 19px; font-weight: 700; letter-spacing: -0.01em; }
+
+  .conn-btn{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 13px;
+    padding: 10px 16px;
+    border-radius: 100px;
+    transition: border-color .2s, background .2s;
+  }
+  .conn-btn:active{ transform: scale(0.97); }
+  .dot{
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--red);
+    box-shadow: 0 0 0 0 rgba(255,77,94,0.5);
+  }
+  .dot.on{
+    background: var(--teal);
+    box-shadow: 0 0 10px 2px rgba(53,212,199,0.6);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse{
+    0%,100%{ opacity: 1; }
+    50%{ opacity: .55; }
+  }
+  .conn-btn.on{ border-color: rgba(53,212,199,0.35); }
+
+  main{
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 20px 20px;
+  }
+
+  .console{
+    width: 100%;
+    max-width: 420px;
+    display: flex;
+    gap: 18px;
+    align-items: center;
+  }
+
+  /* D-pad */
+  .dpad{
+    position: relative;
+    width: 240px;
+    height: 240px;
+    flex-shrink: 0;
+  }
+  .dbtn{
+    position: absolute;
+    width: 76px;
+    height: 76px;
+    border-radius: 20px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-dim);
+    transition: background .12s, border-color .12s, color .12s, transform .08s;
+  }
+  .dbtn svg{ width: 26px; height: 26px; }
+  .dbtn.up{ top: 0; left: 82px; }
+  .dbtn.down{ bottom: 0; left: 82px; }
+  .dbtn.left{ top: 82px; left: 0; }
+  .dbtn.right{ top: 82px; right: 0; }
+  .dbtn.active{
+    background: var(--amber-dim);
+    border-color: var(--amber);
+    color: var(--amber);
+    transform: scale(0.94);
+  }
+  .dpad-center{
+    position: absolute;
+    top: 82px; left: 82px;
+    width: 76px; height: 76px;
+    border-radius: 20px;
+    border: 1px dashed var(--line);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--line);
+    letter-spacing: 0.1em;
+  }
+
+  /* Speed fader */
+  .fader-wrap{
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    height: 240px;
+  }
+  .fader-label{
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+  .fader-track{
+    position: relative;
+    width: 54px;
+    flex: 1;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 100px;
+    display: flex;
+    align-items: flex-end;
+    overflow: hidden;
+  }
+  .fader-fill{
+    width: 100%;
+    background: linear-gradient(180deg, var(--amber), #d68a12);
+    border-radius: 100px;
+    transition: height .05s linear;
+  }
+  input[type=range].fader-input{
+    position: absolute;
+    inset: 0;
+    width: 240px;
+    height: 54px;
+    transform: rotate(-90deg) translate(-93px, 93px);
+    transform-origin: top left;
+    opacity: 0;
+    margin: 0;
+  }
+  .fader-value{
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 18px;
+    color: var(--amber);
+  }
+
+  .stop-row{
+    max-width: 420px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 0 20px;
+  }
+  .stop-btn{
+    width: 100%;
+    padding: 18px;
+    border-radius: 18px;
+    background: var(--red-dim);
+    border: 1px solid rgba(255,77,94,0.4);
+    color: var(--red);
+    font-family: 'Inter', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: 0.02em;
+  }
+  .stop-btn:active{ transform: scale(0.98); background: rgba(255,77,94,0.28); }
+
+  footer{
+    padding: 14px 20px calc(16px + env(safe-area-inset-bottom));
+  }
+  .log{
+    max-width: 420px;
+    margin: 0 auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 10px 14px;
+    min-height: 18px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+</style>
 </head>
 <body>
- <a href="1_1/10100/index.html" target="_blank">1번</a>
- <a href="1_1/10101/index.html" target="_blank">2번</a>
- <a href="1_1/10102/index.html" target="_blank">3번</a>
+
+<header>
+  <div class="brand">
+    <span class="eyebrow">ARDUINO · BLE</span>
+    <span class="title">RC 컨트롤러</span>
+  </div>
+  <button class="conn-btn" id="connBtn">
+    <span class="dot" id="dot"></span>
+    <span id="connLabel">연결하기</span>
+  </button>
+</header>
+
+<main>
+  <div class="console">
+    <div class="dpad">
+      <div class="dpad-center">HOLD</div>
+      <button class="dbtn up" data-cmd="f" aria-label="전진">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+      </button>
+      <button class="dbtn down" data-cmd="b" aria-label="후진">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+      </button>
+      <button class="dbtn left" data-cmd="l" aria-label="좌회전">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+      </button>
+      <button class="dbtn right" data-cmd="r" aria-label="우회전">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </button>
+    </div>
+
+    <div class="fader-wrap">
+      <span class="fader-label">속도</span>
+      <div class="fader-track">
+        <div class="fader-fill" id="faderFill" style="height:59%"></div>
+        <input type="range" class="fader-input" id="speedRange" min="0" max="255" value="150">
+      </div>
+      <span class="fader-value" id="speedValue">150</span>
+    </div>
+  </div>
+</main>
+
+<div class="stop-row">
+  <button class="stop-btn" id="stopBtn">■ 정지</button>
+</div>
+
+<footer>
+  <div class="log" id="log">블루투스 기기와 연결해 주세요</div>
+</footer>
+
+<script>
+  // ── BLE 설정 (HM-10 / HM-19 등 UART 계열 BLE 모듈 기준) ──
+  // HC-05 / HC-06 클래식 블루투스는 브라우저 Web Bluetooth로 연결할 수 없습니다.
+  const SERVICE_UUID = '0000ffe0-0000-1000-8000-00805f9b34fb';
+  const CHAR_UUID     = '0000ffe1-0000-1000-8000-00805f9b34fb';
+
+  let device, characteristic;
+  let currentSpeed = 150;
+  let holdInterval = null;
+
+  const dot = document.getElementById('dot');
+  const connBtn = document.getElementById('connBtn');
+  const connLabel = document.getElementById('connLabel');
+  const log = document.getElementById('log');
+  const stopBtn = document.getElementById('stopBtn');
+  const speedRange = document.getElementById('speedRange');
+  const speedValue = document.getElementById('speedValue');
+  const faderFill = document.getElementById('faderFill');
+
+  function setLog(msg){
+    log.textContent = msg;
+  }
+
+  function setConnected(isOn){
+    dot.classList.toggle('on', isOn);
+    connBtn.classList.toggle('on', isOn);
+    connLabel.textContent = isOn ? '연결됨' : '연결하기';
+  }
+
+  async function connect(){
+    if(!navigator.bluetooth){
+      setLog('이 브라우저는 Web Bluetooth를 지원하지 않아요 (Android Chrome 사용)');
+      return;
+    }
+    try{
+      setLog('기기를 찾는 중...');
+      device = await navigator.bluetooth.requestDevice({
+        filters: [{ services: [SERVICE_UUID] }],
+        optionalServices: [SERVICE_UUID]
+      });
+      device.addEventListener('gattserverdisconnected', onDisconnected);
+      const server = await device.gatt.connect();
+      const service = await server.getPrimaryService(SERVICE_UUID);
+      characteristic = await service.getCharacteristic(CHAR_UUID);
+      setConnected(true);
+      setLog(device.name ? `${device.name}에 연결됨` : '연결됨');
+    }catch(err){
+      setLog('연결 실패: ' + err.message);
+      setConnected(false);
+    }
+  }
+
+  function onDisconnected(){
+    setConnected(false);
+    setLog('연결이 끊어졌어요');
+    characteristic = null;
+  }
+
+  connBtn.addEventListener('click', () => {
+    if(characteristic){
+      device.gatt.disconnect();
+    } else {
+      connect();
+    }
+  });
+
+  async function sendCmd(str){
+    setLog('전송: ' + str.trim());
+    if(!characteristic) return;
+    try{
+      const data = new TextEncoder().encode(str);
+      await characteristic.writeValueWithoutResponse(data);
+    }catch(err){
+      setLog('전송 실패: ' + err.message);
+    }
+  }
+
+  function sendSpeed(v){
+    const padded = String(v).padStart(3, '0');
+    sendCmd('v' + padded + '\n');
+  }
+
+  speedRange.addEventListener('input', () => {
+    currentSpeed = parseInt(speedRange.value, 10);
+    speedValue.textContent = currentSpeed;
+    faderFill.style.height = (currentSpeed / 255 * 100) + '%';
+  });
+  speedRange.addEventListener('change', () => sendSpeed(currentSpeed));
+
+  // D-pad: 누르는 동안 방향 명령, 떼면 정지
+  document.querySelectorAll('.dbtn').forEach(btn => {
+    const cmd = btn.dataset.cmd;
+
+    const press = (e) => {
+      e.preventDefault();
+      btn.classList.add('active');
+      sendCmd(cmd + '\n');
+    };
+    const release = (e) => {
+      e.preventDefault();
+      btn.classList.remove('active');
+      sendCmd('s\n');
+    };
+
+    btn.addEventListener('touchstart', press, { passive: false });
+    btn.addEventListener('touchend', release, { passive: false });
+    btn.addEventListener('touchcancel', release, { passive: false });
+    btn.addEventListener('mousedown', press);
+    btn.addEventListener('mouseup', release);
+    btn.addEventListener('mouseleave', release);
+  });
+
+  stopBtn.addEventListener('click', () => sendCmd('s\n'));
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    });
+  }
+</script>
 </body>
 </html>
