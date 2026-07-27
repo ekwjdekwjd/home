@@ -294,7 +294,7 @@
 </footer>
 
 <script>
-  // ── BLE 설정 (HM-10 / HM-19 등 UART 계열 BLE 모듈 기준) ──
+  // ── BLE 설정 (HC-10 / HM-10 / HM-19 등 CC41-A 계열 UART BLE 모듈 기준) ──
   // HC-05 / HC-06 클래식 블루투스는 브라우저 Web Bluetooth로 연결할 수 없습니다.
   const SERVICE_UUID = '0000ffe0-0000-1000-8000-00805f9b34fb';
   const CHAR_UUID     = '0000ffe1-0000-1000-8000-00805f9b34fb';
@@ -329,8 +329,11 @@
     }
     try{
       setLog('기기를 찾는 중...');
+      // HC-10/HM-10 클론 중 일부는 광고 패킷에 서비스 UUID를 포함하지 않아
+      // 서비스로 필터링하면 목록에 안 뜨는 경우가 있어, 주변 기기를 모두 보여주고
+      // optionalServices로 연결 후 서비스에 접근하는 방식을 사용합니다.
       device = await navigator.bluetooth.requestDevice({
-        filters: [{ services: [SERVICE_UUID] }],
+        acceptAllDevices: true,
         optionalServices: [SERVICE_UUID]
       });
       device.addEventListener('gattserverdisconnected', onDisconnected);
