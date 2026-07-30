@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2 - 8 자리배치</title>
+<!-- 캡처 라이브러리 및 PDF 생성 라이브러리 추가 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root{
+    --board: #1f3b34;
+    --board-light: #27473f;
+    --chalk: #f4f1e8;
+    --chalk-dim: #cfd6c9;
+    --accent: #e8b84b;
+    --desk: #fffdf6;
+    --desk-line: #d8cfa8;
+    --shadow: rgba(0,0,0,0.25);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    min-height:100vh;
+    background:
+      radial-gradient(ellipse at top, #2c4f45 0%, #1a2f29 70%);
+    font-family:'Segoe UI', 'Malgun Gothic', sans-serif;
+    color:var(--chalk);
+    padding:32px 16px 60px;
+  }
+  .wrap{
+    max-width:760px;
+    margin:0 auto;
+  }
+  header{
+    text-align:center;
+    margin-bottom:28px;
+  }
+  h1{
+    font-size:1.7rem;
+    letter-spacing:1px;
+    margin:0 0 6px;
+    font-weight:700;
+    color:#f4f1e8;
+    text-shadow:0 2px 6px var(--shadow);
+  }
+  .sub{
+    color:var(--chalk-dim);
+    font-size:0.9rem;
+    margin:0;
+  }
+  .teacher-desk-wrap{
+    display:flex;
+    justify-content:center;
+    margin:16px 0;
+  }
+  .teacher-desk{
+    width:180px;
+    height:auto;
+    overflow:visible;
+  }
+  .room{
+    display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    gap:16px 14px;
+  }
+  .empty-msg{
+    grid-column:1 / -1;
+    text-align:center;
+    color:var(--chalk-dim);
+    font-size:0.95rem;
+    padding:40px 20px;
+    border:2px dashed var(--desk-line);
+    border-radius:12px;
+    background:rgba(255,255,255,0.04);
+  }
+  .desk{
+    background:var(--desk);
+    border-radius:12px;
+    padding:14px 10px;
+    box-shadow:0 6px 14px var(--shadow);
+    display:flex;
+    justify-content:center;
+    gap:8px;
+    position:relative;
+    min-height:98px;
+    align-items:center;
+    transform:translateY(0);
+    animation:settle 0.4s ease both;
+  }
+  .desk::before{
+    content:"";
+    position:absolute;
+    left:50%;
+    top:8px;
+    bottom:8px;
+    width:1px;
+    background:var(--desk-line);
+    transform:translateX(-50%);
+  }
+  .desk.empty{
+    background:transparent;
+    box-shadow:none;
+  }
+  .desk.empty::before{
+    content:none;
+  }
+  .seat{
+    width:82px;
+    min-height:70px;
+    border-radius:12px;
+    background:var(--board-light);
+    color:var(--chalk);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    font-weight:700;
+    font-size:1.7rem;
+    border:3px solid var(--accent);
+    padding:6px 4px;
+    gap:2px;
+  }
+  .seat .num-text{
+    color: #f4f1e8;
+    font-weight: 700;
+  }
+  .seat .name{
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: #cfd6c9;
+    max-width: 76px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  @keyframes settle{
+    from{opacity:0; transform:translateY(8px);}
+    to{opacity:1; transform:translateY(0);}
+  }
+  .controls{
+    text-align:center;
+    margin-top:30px;
+  }
+  button{
+    background:var(--accent);
+    color:#2a2210;
+    border:none;
+    padding:12px 26px;
+    border-radius:30px;
+    font-size:0.95rem;
+    font-weight:700;
+    cursor:pointer;
+    box-shadow:0 4px 10px var(--shadow);
+    transition:transform 0.15s ease, box-shadow 0.15s ease, background 0.2s, color 0.2s;
+  }
+  button:hover{
+    transform:translateY(-2px);
+    box-shadow:0 8px 16px var(--shadow);
+  }
+  button:active{
+    transform:translateY(0);
+  }
+  .controls button{
+    margin:0 6px 10px;
+  }
+  button.save-btn{
+    background:var(--desk);
+    color:var(--board);
+  }
+  button.name-btn{
+    background:transparent;
+    color:var(--chalk);
+    border:2px solid var(--chalk-dim);
+    box-shadow:none;
+  }
+  
+  .view-btn{
+    background:transparent;
+    color:var(--chalk-dim);
+    border:2px solid var(--accent);
+    box-shadow:none;
+  }
+  .view-btn.active{
+    background:var(--accent);
+    color:#2a2210;
+  }
+
+  .info{
+    text-align:center;
+    color:var(--chalk-dim);
+    font-size:0.82rem;
+    margin-top:14px;
+  }
+  .modal-overlay{
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(10,20,17,0.75);
+    align-items:center;
+    justify-content:center;
+    z-index:100;
+    padding:20px;
+  }
+  .modal-overlay.show{
+    display:flex;
+  }
+  .modal{
+    background:var(--desk);
+    color:var(--board);
+    border-radius:14px;
+    max-width:520px;
+    width:100%;
+    max-height:80vh;
+    display:flex;
+    flex-direction:column;
+    box-shadow:0 20px 40px rgba(0,0,0,0.4);
+  }
+  .modal-header{
+    padding:18px 22px 10px;
+    border-bottom:1px solid var(--desk-line);
+  }
+  .modal-header h2{
+    margin:0 0 4px;
+    font-size:1.15rem;
+  }
+  .modal-header p{
+    margin:0;
+    font-size:0.8rem;
+    color:#7a7255;
+  }
+  .file-actions{
+    display:flex;
+    gap:8px;
+    margin-top:10px;
+    flex-wrap:wrap;
+  }
+  .file-btn{
+    padding:6px 12px;
+    font-size:0.78rem;
+    background:#eee7cf;
+    color:var(--board);
+    box-shadow:none;
+    border:1px solid var(--desk-line);
+  }
+  .modal-body{
+    padding:16px 22px;
+    overflow-y:auto;
+    display:grid;
+    grid-template-columns:repeat(2, 1fr);
+    grid-auto-flow:column;
+    grid-template-rows:repeat(14, auto);
+    gap:8px 14px;
+  }
+  .name-row{
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .name-row .num{
+    width:68px;
+    flex-shrink:0;
+    font-weight:700;
+    font-size:0.85rem;
+    text-align:right;
+    color:var(--board);
+    white-space:nowrap;
+  }
+  .name-row input{
+    flex:1;
+    min-width:0;
+    padding:6px 8px;
+    border:1px solid var(--desk-line);
+    border-radius:6px;
+    font-size:0.85rem;
+    background:#fffef9;
+  }
+  .name-row input:focus{
+    outline:2px solid var(--accent);
+    outline-offset:1px;
+  }
+  .modal-footer{
+    padding:14px 22px 18px;
+    border-top:1px solid var(--desk-line);
+    text-align:right;
+    display:flex;
+    justify-content:flex-end;
+    gap:8px;
+  }
+  .modal-footer button{
+    padding:9px 20px;
+    font-size:0.85rem;
+  }
+  .btn-cancel{
+    background:transparent;
+    color:#7a7255;
+    border:1px solid var(--desk-line);
+    box-shadow:none;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="capture-area">
+    <header>
+      <h1>🪑 2 - 8 자리배치</h1>
+    </header>
+
+    <div class="teacher-desk-wrap" id="teacher-desk-top">
+      <svg class="teacher-desk" viewBox="0 0 240 100" xmlns="http://www.w3.org/2000/svg">
+        <title>교사용 책상</title>
+        <rect x="14" y="46" width="212" height="20" rx="5" fill="#27473f" stroke="#e8b84b" stroke-width="3"/>
+        <rect x="26" y="66" width="14" height="26" rx="2" fill="#27473f" stroke="#e8b84b" stroke-width="3"/>
+        <rect x="200" y="66" width="14" height="26" rx="2" fill="#27473f" stroke="#e8b84b" stroke-width="3"/>
+        <rect x="96" y="66" width="48" height="16" rx="2" fill="#1f3b34" stroke="#e8b84b" stroke-width="2"/>
+        <circle cx="120" cy="74" r="2.5" fill="#e8b84b"/>
+        <rect x="98" y="10" width="44" height="30" rx="3" fill="#1f3b34" stroke="#e8b84b" stroke-width="3"/>
+        <rect x="115" y="40" width="10" height="7" fill="#27473f" stroke="#e8b84b" stroke-width="2"/>
+        <rect x="150" y="30" width="26" height="16" rx="2" fill="#f4f1e8" stroke="#e8b84b" stroke-width="2"/>
+        <line x1="153" y1="35" x2="173" y2="35" stroke="#e8b84b" stroke-width="1.5"/>
+        <line x1="153" y1="39" x2="169" y2="39" stroke="#e8b84b" stroke-width="1.5"/>
+      </svg>
+    </div>
+
+    <div class="room" id="room"></div>
+
+    <div class="teacher-desk-wrap" id="teacher-desk-bottom" style="display:none;">
+      <svg class="teacher-desk" viewBox="0 0 240 100" xmlns="http://www.w3.org/2000/svg">
+        <title>교사용 책상</title>
+        <rect x="14" y="46" width="212" height="20" rx="5" fill="#27473f" stroke="#e8b84b" stroke-width="3"/>
+        <rect x="26" y="66" width="14" height="26" rx="2" fill="#27473f" stroke="#e8b84b" stroke-width="3"/>
+        <rect x="200" y="66" width="14" height="26" rx="2" fill="#27473f" stroke="#e8b84b" stroke-width="3"/>
+        <rect x="96" y="66" width="48" height="16" rx="2" fill="#1f3b34" stroke="#e8b84b" stroke-width="2"/>
+        <circle cx="120" cy="74" r="2.5" fill="#e8b84b"/>
+        <rect x="98" y="10" width="44" height="30" rx="3" fill="#1f3b34" stroke="#e8b84b" stroke-width="3"/>
+        <rect x="115" y="40" width="10" height="7" fill="#27473f" stroke="#e8b84b" stroke-width="2"/>
+        <rect x="150" y="30" width="26" height="16" rx="2" fill="#f4f1e8" stroke="#e8b84b" stroke-width="2"/>
+        <line x1="153" y1="35" x2="173" y2="35" stroke="#e8b84b" stroke-width="1.5"/>
+        <line x1="153" y1="39" x2="169" y2="39" stroke="#e8b84b" stroke-width="1.5"/>
+      </svg>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="view-btn active" id="btn-screen" onclick="setViewMode('screen')">🖥️ 화면용</button>
+    <button class="view-btn" id="btn-teacher" onclick="setViewMode('teacher')">👩‍🏫 교사용</button>
+    <br>
+    <button onclick="shuffleSeats()">🔀 자리 다시 배치하기</button>
+    <button class="name-btn" onclick="openNameModal()">✏️ 이름 입력하기</button>
+    <button class="save-btn" onclick="savePdf()">📄 PDF로 저장하기</button>
+    <p class="info" id="info"></p>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this) closeNameModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>학생 이름 입력</h2>
+      <p>이름을 입력한 학생만 자리 배치에 포함됩니다. 결번이거나 없는 학생은 비워두세요.</p>
+      <div class="file-actions">
+        <button class="file-btn" onclick="document.getElementById('import-file').click()">📂 파일에서 불러오기</button>
+        <button class="file-btn" onclick="exportNames()">⬇️ 이름 파일로 저장</button>
+        <input type="file" id="import-file" accept=".json" style="display:none" onchange="handleImportFile(event)">
+      </div>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeNameModal()">취소</button>
+      <button onclick="saveNames()">저장</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const TOTAL = 29;
+  const NAME_KEY = 'seatplan_names';
+  let currentStudents = [];
+  let names = loadNames();
+  let viewMode = 'screen';
+
+  function loadNames(){
+    try{
+      const raw = localStorage.getItem(NAME_KEY);
+      return raw ? JSON.parse(raw) : {};
+    }catch(e){
+      return {};
+    }
+  }
+
+  function getAllNumbers(){
+    const list = [];
+    for(let i=1;i<=TOTAL;i++) list.push(i);
+    return list;
+  }
+
+  function getSeatRoster(){
+    return getAllNumbers().filter(num => (names[num] || '').trim() !== '');
+  }
+
+  function shuffle(arr){
+    const a = arr.slice();
+    for(let i=a.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [a[i],a[j]] = [a[j],a[i]];
+    }
+    return a;
+  }
+
+  function setViewMode(mode){
+    viewMode = mode;
+    
+    document.getElementById('btn-screen').classList.toggle('active', mode === 'screen');
+    document.getElementById('btn-teacher').classList.toggle('active', mode === 'teacher');
+    
+    document.getElementById('teacher-desk-top').style.display = (mode === 'screen') ? 'flex' : 'none';
+    document.getElementById('teacher-desk-bottom').style.display = (mode === 'teacher') ? 'flex' : 'none';
+    
+    render(currentStudents);
+  }
+
+  function render(students){
+    currentStudents = students;
+    const room = document.getElementById('room');
+    room.innerHTML = '';
+
+    if(students.length === 0){
+      const msg = document.createElement('p');
+      msg.className = 'empty-msg';
+      msg.textContent = '아직 배치할 학생이 없어요. "✏️ 이름 입력하기"에서 이름을 입력해 주세요.';
+      room.appendChild(msg);
+      document.getElementById('info').textContent = '총 학생 수: 0명';
+      return;
+    }
+
+    const desks = [];
+    for(let i=0;i<students.length;i+=2){
+      desks.push(students.slice(i, i+2));
+    }
+
+    let finalDesks = [];
+
+    if(viewMode === 'screen'){
+      finalDesks = desks;
+
+      finalDesks.forEach(pair => {
+        const desk = createDeskElement(pair);
+        room.appendChild(desk);
+      });
+
+      const remainder = finalDesks.length % 3;
+      if(remainder !== 0){
+        for(let i=0; i<3-remainder; i++){
+          const empty = document.createElement('div');
+          empty.className = 'desk empty';
+          room.appendChild(empty);
+        }
+      }
+
+    } else {
+      for (let i = desks.length - 1; i >= 0; i -= 3) {
+        const row = desks.slice(Math.max(0, i - 2), i + 1);
+        row.reverse().forEach(pair => {
+          finalDesks.push(pair.slice().reverse());
+        });
+      }
+
+      const remainder = finalDesks.length % 3;
+      if(remainder !== 0){
+        for(let i=0; i<3-remainder; i++){
+          const empty = document.createElement('div');
+          empty.className = 'desk empty';
+          room.appendChild(empty);
+        }
+      }
+
+      finalDesks.forEach(pair => {
+        const desk = createDeskElement(pair);
+        room.appendChild(desk);
+      });
+    }
+
+    document.getElementById('info').textContent =
+      `총 학생 수: ${students.length}명 · 책상 수: ${desks.length}개`;
+  }
+
+  function createDeskElement(pair){
+    const desk = document.createElement('div');
+    desk.className = 'desk';
+    pair.forEach(num => {
+      const seat = document.createElement('div');
+      seat.className = 'seat';
+
+      const numEl = document.createElement('div');
+      numEl.className = 'num-text';
+      numEl.textContent = num;
+      seat.appendChild(numEl);
+
+      const studentName = names[num];
+      if(studentName){
+        const nameEl = document.createElement('div');
+        nameEl.className = 'name';
+        nameEl.textContent = studentName;
+        seat.appendChild(nameEl);
+      }
+
+      desk.appendChild(seat);
+    });
+    return desk;
+  }
+
+  function shuffleSeats(){
+    const students = shuffle(getSeatRoster());
+    render(students);
+  }
+
+  function openNameModal(){
+    populateNameInputs();
+    document.getElementById('modal-overlay').classList.add('show');
+  }
+
+  function populateNameInputs(){
+    const body = document.getElementById('modal-body');
+    body.innerHTML = '';
+    const list = getAllNumbers();
+    const rows = Math.ceil(list.length / 2);
+    body.style.gridTemplateRows = `repeat(${rows}, auto)`;
+    list.forEach(num => {
+      const row = document.createElement('div');
+      row.className = 'name-row';
+
+      const numLabel = document.createElement('span');
+      numLabel.className = 'num';
+      numLabel.textContent = num + '번';
+
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.maxLength = 8;
+      input.dataset.num = num;
+      input.value = names[num] || '';
+
+      row.appendChild(numLabel);
+      row.appendChild(input);
+      body.appendChild(row);
+    });
+  }
+
+  function closeNameModal(){
+    document.getElementById('modal-overlay').classList.remove('show');
+  }
+
+  function collectInputsToNames(){
+    const inputs = document.querySelectorAll('#modal-body input');
+    inputs.forEach(input => {
+      const num = input.dataset.num;
+      const val = input.value.trim();
+      if(val){
+        names[num] = val;
+      } else {
+        delete names[num];
+      }
+    });
+  }
+
+  function persistNames(){
+    try{
+      localStorage.setItem(NAME_KEY, JSON.stringify(names));
+    }catch(e){
+      console.error(e);
+    }
+  }
+
+  function saveNames(){
+    collectInputsToNames();
+    persistNames();
+    closeNameModal();
+    shuffleSeats();
+  }
+
+  function exportNames(){
+    collectInputsToNames();
+    persistNames();
+
+    if(Object.keys(names).length === 0){
+      alert('내보낼 이름이 없습니다. 먼저 이름을 입력해 주세요.');
+      return;
+    }
+
+    const blob = new Blob([JSON.stringify(names, null, 2)], {type:'application/json'});
+    const link = document.createElement('a');
+    link.download = '학생명단.json';
+    link.href = URL.createObjectURL(blob);
+    link.click();
+    URL.revokeObjectURL(link.href);
+  }
+
+  function handleImportFile(event){
+    const file = event.target.files[0];
+    if(!file) return;
+
+    const reader = new FileReader();
+    reader.onload = e => {
+      try{
+        const imported = JSON.parse(e.target.result);
+        if(typeof imported !== 'object' || imported === null || Array.isArray(imported)){
+          throw new Error('형식 오류');
+        }
+        names = imported;
+        persistNames();
+        populateNameInputs();
+        shuffleSeats();
+        alert('이름 목록을 불러왔습니다.');
+      }catch(err){
+        alert('파일을 읽을 수 없습니다. 올바른 이름 파일(.json)인지 확인해 주세요.');
+        console.error(err);
+      }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+  }
+
+  // 현재 화면에 보이는 모습 그대로 PDF로 저장하는 함수
+  function savePdf(){
+    const target = document.getElementById('capture-area');
+    const saveBtn = document.querySelector('.save-btn');
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'PDF 생성 중...';
+
+    const now = new Date();
+    const stamp = now.getFullYear() + '' +
+      String(now.getMonth()+1).padStart(2,'0') +
+      String(now.getDate()).padStart(2,'0') + '_' +
+      String(now.getHours()).padStart(2,'0') +
+      String(now.getMinutes()).padStart(2,'0');
+    
+    const filename = `자리배치_${viewMode === 'teacher' ? '교사용' : '화면용'}_${stamp}.pdf`;
+
+    // 등장 애니메이션이 완전히 끝난 뒤 캡처해 글씨가 흐리게 나오는 것을 방지
+    setTimeout(() => {
+    html2canvas(target, {
+      backgroundColor: '#ffffff',
+      scale: 2,
+      onclone: (clonedDoc) => {
+        // html2canvas가 CSS 변수(var(--...))로 지정된 색을 정확히 못 읽는 경우가 있어
+        // 흰 배경에서도 잘 보이도록 실제 색상 값을 명시적으로 지정한다
+        const set = (selector, prop, value) => {
+          clonedDoc.querySelectorAll(selector).forEach(el => {
+            el.style[prop] = value;
+          });
+        };
+        set('h1', 'color', '#1f3b34');
+        set('.sub', 'color', '#4a6058');
+        set('.info', 'color', '#4a6058');
+        set('.desk:not(.empty)', 'background', '#ffffff');
+        set('.desk:not(.empty)', 'boxShadow', 'none');
+        set('.desk:not(.empty)', 'border', '2px solid #000000');
+        set('.desk', 'animation', 'none');
+        set('.desk', 'opacity', '1');
+        set('.seat', 'background', '#ffffff');
+        set('.seat', 'borderColor', '#000000');
+        set('.num-text', 'color', '#000000');
+        set('.num-text', 'opacity', '1');
+        set('.name', 'color', '#000000');
+        set('.name', 'opacity', '1');
+
+        // 가상 요소(::before, 책상 가운데 구분선)는 style 태그로 별도 지정
+        const style = clonedDoc.createElement('style');
+        style.innerHTML = `
+          .desk:not(.empty)::before {
+            background: #000000 !important;
+          }
+        `;
+        clonedDoc.head.appendChild(style);
+      }
+    }).then(canvas => {
+      const imgData = canvas.toDataURL('image/png');
+      
+      // jsPDF 생성: 가로방향(landscape), mm 단위, a4 규격
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF('landscape', 'mm', 'a4');
+
+      const pdfWidth = pdf.internal.pageSize.getWidth();   // 297 mm
+      const pdfHeight = pdf.internal.pageSize.getHeight(); // 210 mm
+
+      // 상단(제목·책상)부터 하단까지 전체 내용이 잘리지 않도록
+      // 가로/세로 중 더 제한적인 쪽에 맞춰 비율대로 크기를 계산
+      const availWidth = pdfWidth - 20;
+      const availHeight = pdfHeight - 20;
+      let imgWidth = availWidth;
+      let imgHeight = (canvas.height * imgWidth) / canvas.width;
+      if(imgHeight > availHeight){
+        imgHeight = availHeight;
+        imgWidth = (canvas.width * imgHeight) / canvas.height;
+      }
+
+      // 중앙 정렬 좌표 계산
+      const x = (pdfWidth - imgWidth) / 2;
+      const y = (pdfHeight - imgHeight) / 2;
+
+      // 흰색 배경으로 페이지를 채운 뒤 캡처한 이미지를 올린다
+      pdf.setFillColor(255, 255, 255);
+      pdf.rect(0, 0, pdfWidth, pdfHeight, 'F');
+      pdf.addImage(imgData, 'PNG', x, y, imgWidth, imgHeight);
+      pdf.save(filename);
+
+      saveBtn.disabled = false;
+      saveBtn.textContent = '📄 PDF로 저장하기';
+    }).catch(err => {
+      alert('PDF 저장에 실패했습니다. 다시 시도해 주세요.');
+      saveBtn.disabled = false;
+      saveBtn.textContent = '📄 PDF로 저장하기';
+      console.error(err);
+    });
+    }, 500);
+  }
+
+  shuffleSeats();
+</script>
+</body>
+</html>
