@@ -475,7 +475,6 @@
           </div>
         </div>
         <div class="actions">
-          <button class="dl" data-id="${it.id}">다운로드</button>
           <button class="del" data-id="${it.id}">삭제</button>
         </div>
       </div>
@@ -488,45 +487,28 @@
     return div.innerHTML;
   }
 
-  function readFileAsDataURL(file){
-    return new Promise((resolve, reject)=>{
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = () => reject(new Error('read failed'));
-      reader.readAsDataURL(file);
-    });
-  }
 
-  async function handleFiles(fileList){
+
+  function handleFiles(fileList){
     const files = Array.from(fileList);
     if(files.length === 0) return;
 
     let addedCount = 0;
     for(const file of files){
-      if(file.size > 4.5 * 1024 * 1024){
-        showToast(`"${file.name}"은(는) 용량이 너무 커요 (4.5MB 이하만 가능)`);
-        continue;
-      }
-      try{
-        const dataUrl = await readFileAsDataURL(file);
-        items.push({
-          id: Date.now() + '-' + Math.random().toString(36).slice(2,8),
-          name: file.name,
-          size: file.size,
-          mime: file.type,
-          kind: kindOf(file.type, file.name),
-          addedAt: Date.now(),
-          data: dataUrl
-        });
-        addedCount++;
-      }catch(e){
-        showToast(`"${file.name}"을(를) 읽는 데 실패했어요`);
-      }
+      items.push({
+        id: Date.now() + '-' + Math.random().toString(36).slice(2,8),
+        name: file.name,
+        size: file.size,
+        mime: file.type,
+        kind: kindOf(file.type, file.name),
+        addedAt: Date.now()
+      });
+      addedCount++;
     }
     if(addedCount > 0){
-      await saveItems();
+      saveItems();
       render();
-      showToast(`${addedCount}개 파일을 보관했어요`);
+      showToast(`${addedCount}개 파일을 목록에 추가했어요`);
     }
   }
 
@@ -553,19 +535,7 @@
   });
 
   grid.addEventListener('click', (e)=>{
-    const dlBtn = e.target.closest('.dl');
     const delBtn = e.target.closest('.del');
-    if(dlBtn){
-      const item = items.find(i => i.id === dlBtn.dataset.id);
-      if(item){
-        const a = document.createElement('a');
-        a.href = item.data;
-        a.download = item.name;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-      }
-    }
     if(delBtn){
       items = items.filter(i => i.id !== delBtn.dataset.id);
       saveItems();
