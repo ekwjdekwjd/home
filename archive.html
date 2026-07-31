@@ -350,6 +350,8 @@
       <h1>자료실</h1>
     </div>
     <div class="count-tag"><b id="count">0</b>건 보관 중</div>
+    <button class="btn" id="import-btn" style="background:transparent; color:var(--teal); border:1px solid var(--line);">manifest.json 불러오기</button>
+    <input type="file" id="import-input" accept="application/json" style="display:none;">
     <button class="btn" id="export-btn">manifest.json 내보내기</button>
     <a class="nav-link" href="index.html">다운로드 홈페이지 →</a>
   </header>
@@ -358,6 +360,7 @@
     <div class="guide-step"><b>1</b> 아래에서 파일을 첨부해 목록을 정리하세요</div>
     <div class="guide-step"><b>2</b> "manifest.json 내보내기"를 눌러 목록 파일을 받으세요</div>
     <div class="guide-step"><b>3</b> manifest.json과 실제 파일들을 저장소의 <code>files/</code> 폴더에 함께 올려 커밋하세요</div>
+    <div class="guide-step"><b>4</b> 이어서 편집하려면 배포된 manifest.json을 "불러오기"로 다시 가져오세요</div>
   </div>
 
   <div class="filing-slot" id="dropzone">
@@ -559,6 +562,42 @@
   });
 
   const exportBtn = document.getElementById('export-btn');
+  const importBtn = document.getElementById('import-btn');
+  const importInput = document.getElementById('import-input');
+
+  function readFileAsText(file){
+    return new Promise((resolve, reject)=>{
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error('read failed'));
+      reader.readAsText(file);
+    });
+  }
+
+  importBtn.addEventListener('click', ()=> importInput.click());
+  importInput.addEventListener('change', async (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    try{
+      const text = await readFileAsText(file);
+      const parsed = JSON.parse(text);
+      if(!Array.isArray(parsed)) throw new Error('invalid shape');
+      items = parsed.map(it => ({
+        id: it.id || (Date.now() + '-' + Math.random().toString(36).slice(2,8)),
+        name: it.name,
+        size: it.size || 0,
+        mime: it.mime || '',
+        kind: it.kind || kindOf('', it.name || ''),
+        addedAt: it.addedAt || Date.now()
+      }));
+      saveItems();
+      render();
+      showToast(`manifest.json에서 ${items.length}개 항목을 불러왔어요`);
+    }catch(err){
+      showToast('manifest.json을 읽는 데 실패했어요');
+    }
+    importInput.value = '';
+  });
 
   function exportManifest(){
     if(items.length === 0){
